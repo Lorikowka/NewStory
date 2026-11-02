@@ -60,7 +60,7 @@ public final class StoryEngineMod {
                 ServerPlayer player = playerFor(server, id);
                 if (player == null) return false;
                 var speaker = dialogue.speaker();
-                dev.storyengine.forge.network.NarrativeNetwork.send(player, speaker.name(), speaker.portraitId(), speaker.color(), dialogue.text(), dialogue.mode());
+                dev.storyengine.forge.network.NarrativeNetwork.send(player, speaker.name(), speaker.portraitId(), speaker.color(), dialogue.text(), dialogue.mode(), speaker.portraitMode());
                 return true;
             }
         }, 256, 128);

@@ -65,10 +65,10 @@ public final class StoryScriptBuilder {
             String next = i + 1 == steps.size() ? "end" : "step_" + (i + 1);
             if (step instanceof Line line) {
                 var npc = line.speaker();
-                var speaker = new StoryDefinition.Speaker(npc.id(), npc.name(), npc.nameColor(), npc.portraitId());
+                var speaker = new StoryDefinition.Speaker(npc.id(), npc.name(), npc.nameColor(), npc.portraitId(), npc.portraitMode());
                 nodes.put("step_" + i, new StoryDefinition.Dialogue(speaker, line.mode(), line.text(), next));
                 append(fingerprint, line.mode().name(), line.speaker().id().value(), line.speaker().name(),
-                        Integer.toString(line.speaker().nameColor()), line.speaker().portraitId(), line.text());
+                        Integer.toString(line.speaker().nameColor()), line.speaker().portraitId(), line.speaker().portraitMode().name(), line.text());
             } else if (step instanceof Wait wait) {
                 nodes.put("step_" + i, new StoryDefinition.Delay(wait.ticks(), next));
                 append(fingerprint, "wait", Long.toString(wait.ticks()));

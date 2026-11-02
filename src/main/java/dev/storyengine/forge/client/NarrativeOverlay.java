@@ -2,6 +2,7 @@ package dev.storyengine.forge.client;
 
 import dev.storyengine.forge.StoryFiles;
 import dev.storyengine.core.StoryDefinition.DialogueMode;
+import dev.storyengine.core.StoryDefinition.PortraitMode;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -22,7 +23,7 @@ import javax.imageio.ImageIO;
 /** Client-only presentation. No NPC lookup: heads are local PNG assets with a built-in fallback. */
 @Mod.EventBusSubscriber(modid = "storyengine", value = Dist.CLIENT)
 public final class NarrativeOverlay {
-    private record Line(String speaker, String head, int color, String text) {}
+    private record Line(String speaker, String head, int color, String text, PortraitMode portraitMode) {}
     private static final ArrayDeque<Line> queue = new ArrayDeque<>();
     private static final ResourceLocation FALLBACK = new ResourceLocation("minecraft", "textures/entity/player/wide/steve.png");
     private static final int HEAD_SIZE = 16;
@@ -30,13 +31,13 @@ public final class NarrativeOverlay {
     private static Line current;
     private static int age;
     private static ResourceLocation portrait;
-    public static void enqueue(String speaker, String head, int color, String text, DialogueMode mode) {
+    public static void enqueue(String speaker, String head, int color, String text, DialogueMode mode, PortraitMode portraitMode) {
         String presented = switch (mode) {
             case SAY -> text;
             case THOUGHT -> "(" + text + ")";
             case WHISPER -> "(шёпотом) " + text;
         };
-        if (queue.size() < 32) queue.add(new Line(speaker, head, color & 0xFFFFFF, presented));
+        if (queue.size() < 32) queue.add(new Line(speaker, head, color & 0xFFFFFF, presented, portraitMode));
     }
     public static void clear() {
         queue.clear(); current = null; age = 0;
@@ -53,7 +54,8 @@ public final class NarrativeOverlay {
             portrait = null;
         }
         if (current == null && !queue.isEmpty()) {
-            current = queue.remove(); age = 0; portrait = loadHead(current.head);
+            current = queue.remove(); age = 0;
+            portrait = current.portraitMode == PortraitMode.CUSTOM_TEXTURE ? loadHead(current.head) : null;
         }
     }
     private static ResourceLocation loadHead(String name) {
@@ -85,7 +87,9 @@ public final class NarrativeOverlay {
         if (current == null || mc.screen != null || mc.options.hideGui || mc.player == null) return;
         var gui = event.getGuiGraphics();
         int width = mc.getWindow().getGuiScaledWidth(), height = mc.getWindow().getGuiScaledHeight();
-        int wrap = Math.max(20, Math.min(MAX_TEXT_WIDTH, width - 42));
+        boolean showHead = current.portraitMode != PortraitMode.NONE;
+        int iconSpace = showHead ? 22 : 0;
+        int wrap = Math.max(20, Math.min(MAX_TEXT_WIDTH, width - 20 - iconSpace));
         var full = Component.empty()
                 .append(Component.literal("[" + current.speaker + "]")
                         .withStyle(style -> style.withColor(current.color)))
@@ -95,13 +99,15 @@ public final class NarrativeOverlay {
         int maxLines = Math.max(1, (height - 80) / 10);
         int lineCount = Math.min(lines.size(), maxLines);
         int textWidth = lines.stream().mapToInt(mc.font::width).max().orElse(20);
-        int boxWidth = Math.min(width - 8, Math.max(20, textWidth) + 34);
-        int boxHeight = Math.max(HEAD_SIZE, lineCount * 10) + 12;
+        int boxWidth = Math.min(width - 8, Math.max(20, textWidth) + 12 + iconSpace);
+        int boxHeight = Math.max(showHead ? HEAD_SIZE : 0, lineCount * 10) + 12;
         int left = (width - boxWidth) / 2, top = Math.max(4, height - 50 - boxHeight);
         gui.fill(left, top, left + boxWidth, top + boxHeight, 0xB0101010);
         int iconY = top + (boxHeight - HEAD_SIZE) / 2;
-        if (portrait == null) gui.blit(FALLBACK, left + 6, iconY, HEAD_SIZE, HEAD_SIZE, 8, 8, 8, 8, 64, 64);
-        else gui.blit(portrait, left + 6, iconY, HEAD_SIZE, HEAD_SIZE, 0, 0, 1, 1, 1, 1);
+        if (showHead) {
+            if (portrait == null) gui.blit(FALLBACK, left + 6, iconY, HEAD_SIZE, HEAD_SIZE, 8, 8, 8, 8, 64, 64);
+            else gui.blit(portrait, left + 6, iconY, HEAD_SIZE, HEAD_SIZE, 0, 0, 1, 1, 1, 1);
+        }
         int visible = current.speaker.codePointCount(0, current.speaker.length()) + 4 + age * 2;
         int[] remaining = {visible};
         int firstLine = 0;
@@ -122,7 +128,7 @@ public final class NarrativeOverlay {
                 if (remaining[0]-- <= 0) return false;
                 text.append(Component.literal(new String(Character.toChars(codePoint))).setStyle(style)); return true;
             });
-            gui.drawString(mc.font, text, left + 28, top + 6 + (i - firstLine) * 10, 0xFFFFFF, true);
+            gui.drawString(mc.font, text, left + 6 + iconSpace, top + 6 + (i - firstLine) * 10, 0xFFFFFF, true);
         }
     }
 }

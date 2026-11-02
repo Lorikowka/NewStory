@@ -34,8 +34,13 @@ public record StoryDefinition(StoryId id, String contentHash, String entry, Map<
     public record Action(String type, String value, String next) implements Node {
         public Action { Objects.requireNonNull(type); Objects.requireNonNull(value); Objects.requireNonNull(next); }
     }
-    public record Speaker(StoryId id, String name, int color, String portraitId) {
+    public enum PortraitMode { CUSTOM_TEXTURE, NONE, FALLBACK }
+    public record Speaker(StoryId id, String name, int color, String portraitId, PortraitMode portraitMode) {
+        public Speaker(StoryId id, String name, int color, String portraitId) {
+            this(id, name, color, portraitId, PortraitMode.CUSTOM_TEXTURE);
+        }
         public Speaker {
+            Objects.requireNonNull(portraitMode);
             Objects.requireNonNull(id); Objects.requireNonNull(name); Objects.requireNonNull(portraitId);
             if (name.isBlank() || name.length() > 64) throw new IllegalArgumentException("Invalid speaker name");
             if (color < 0 || color > 0xFFFFFF) throw new IllegalArgumentException("Invalid speaker color");

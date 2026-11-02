@@ -20,7 +20,8 @@ class KotlinStoryCompilerTest {
         val file = directory.resolve("chapter_01.se.kts")
         Files.writeString(file, """
             import dev.storyengine.script.StoryNPC
-            class Oren : StoryNPC("story:oren", "Орен", 0x36612F, "oren")
+            import dev.storyengine.core.StoryDefinition.PortraitMode
+            class Oren : StoryNPC("story:oren", "Орен", 0x36612F, "oren", PortraitMode.NONE)
             val oren = npc<Oren>()
             oren.say("Первая реплика")
             wait(2.seconds)
@@ -32,6 +33,7 @@ class KotlinStoryCompilerTest {
         val first = graph.nodes()["step_0"] as StoryDefinition.Dialogue
         assertEquals("Орен", first.speaker().name())
         assertEquals(0x36612F, first.speaker().color())
+        assertEquals(StoryDefinition.PortraitMode.NONE, first.speaker().portraitMode())
         val lines = mutableListOf<String>()
         val runtime = StoryRuntime({ _, _, type, value ->
             assertEquals("engine:message", type)

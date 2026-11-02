@@ -48,6 +48,23 @@ class StoryScriptBuilderTest {
         assertThrows(IllegalArgumentException.class, () -> script.awaitEvent("engine:" + "a".repeat(256)));
     }
 
+    @Test void portraitModesArePreservedAndChangeGraphHash() {
+        var hashes = new java.util.HashSet<String>();
+        for (var mode : StoryDefinition.PortraitMode.values()) {
+            var script = new StoryScriptBuilder("story:portrait");
+            script.npc(new StoryNPC("story:oren", "Орен", 0x36612F, "oren", mode) {}).say("Текст");
+            var graph = script.build();
+            var dialogue = (StoryDefinition.Dialogue) graph.nodes().get("step_0");
+            assertEquals(mode, dialogue.speaker().portraitMode());
+            assertEquals("oren", dialogue.speaker().portraitId());
+            hashes.add(graph.contentHash());
+        }
+        assertEquals(3, hashes.size());
+        assertEquals(StoryDefinition.PortraitMode.CUSTOM_TEXTURE, new Oren().portraitMode());
+        assertThrows(NullPointerException.class,
+                () -> new StoryNPC("story:oren", "Орен", 0x36612F, "oren", null) {});
+    }
+
     @Test void dialogueModesReachPlatformInOrderAndAffectHash() {
         var script = new StoryScriptBuilder("story:modes");
         var oren = script.npc(new Oren());
