@@ -102,8 +102,8 @@ public final class StoryEngineMod {
             }))
             .then(Commands.literal("validate").executes(ctx -> {
                 ctx.getSource().sendSuccess(() -> Component.literal(temple == null ? "Not loaded" : "VALID demo:temple " + temple.contentHash()), false); return temple == null ? 0 : 1;
-            }).then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
-                String id = StringArgumentType.getString(ctx, "id");
+            }).then(Commands.argument("id", net.minecraft.commands.arguments.ResourceLocationArgument.id()).executes(ctx -> {
+                String id = net.minecraft.commands.arguments.ResourceLocationArgument.getId(ctx, "id").toString();
                 if (id.startsWith("local:")) {
                     if (runtime == null) return 0;
                     if (pendingCompilation != null) {
@@ -127,9 +127,9 @@ public final class StoryEngineMod {
                 start(player, temple);
                 player.sendSystemMessage(Component.literal("Story started. Use /story signal demo:enter_temple to approach the temple."));
                 return 1;
-            }).then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
+            }).then(Commands.argument("id", net.minecraft.commands.arguments.ResourceLocationArgument.id()).executes(ctx -> {
                 ServerPlayer player = ctx.getSource().getPlayerOrException();
-                String id = StringArgumentType.getString(ctx, "id");
+                String id = net.minecraft.commands.arguments.ResourceLocationArgument.getId(ctx, "id").toString();
                 StoryDefinition story = definition(id);
                 if (runtime == null || story == null) { ctx.getSource().sendFailure(Component.literal("Unknown story: " + id)); return 0; }
                 start(player, story);

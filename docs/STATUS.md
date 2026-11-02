@@ -90,3 +90,15 @@ runServer прошёл bootstrap Forge и остановился на eula=false
 
 ## Режимы портретов — проверка 2 ноября
 Добавлены CUSTOM_TEXTURE/NONE/FALLBACK с сохранением четырёхаргументного конструктора StoryNPC. NONE убирает иконку и отступ, FALLBACK не читает PNG. Narrative-протокол — v4. Полная локальная build успешна: 35 тестов, 0 failures/errors. Пример portrait_modes.se.kts скомпилирован из выпускного JAR: VALID smoke:portrait_modes, nodes=6. Визуальная проверка и AUTO_RENDER остаются открытыми. Второй коммит 781aae3 прошёл headless и forge на GitHub Actions.
+
+## Игровая проверка: найденные ошибки
+
+При открытии мира все четыре локальных сценария не загрузились с ошибкой kotlin/jvm/internal/Intrinsics. Обычного implementation classpath оказалось недостаточно для Forge development runtime. Добавлен kotlin-scripting-jvm-host в minecraftLibrary с проверкой необходимых транзитивных библиотек.
+
+При вводе /story start local:portrait_modes клиент сообщил Expected whitespace to end one argument на двоеточии. Для start/validate StringArgumentType.word заменён на ResourceLocationArgument; добавлен регрессионный тест namespaced ID и лишних аргументов.
+
+Добавлен ограниченный LRU-кэш PNG-портретов по SHA-256 (32 текстуры). Повторные реплики используют текстуру из кэша; изменение PNG создаёт другой ключ. Clear/stop/logout и вытеснение освобождают ресурсы. Тесты проверяют LRU, замену, идемпотентную очистку и попытку освобождения всех ресурсов при ошибке одного.
+
+Повторный захват окна Minecraft завершился FrameArrived/window capture timed out. Пользователь проверяет игру вручную; исправления требуют нового запуска клиента. Эти изменения ещё не означают успешную визуальную приёмку или реализацию AUTO_RENDER.
+
+Исправления команд, minecraftLibrary и кэша прошли полную локальную Gradle build: 39 тестов, 0 failures/errors. Проверка наличия Kotlin stdlib, scripting host и compiler в minecraftLibrary теперь входит в check. Повторный игровой запуск начат; успешная загрузка Kotlin в мире ещё не подтверждена.

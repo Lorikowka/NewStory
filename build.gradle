@@ -53,6 +53,8 @@ dependencies {
     implementation project(':engine-compiler')
     implementation project(':engine-script-api')
     implementation project(':engine-script-compiler')
+    // Forge's development module layer does not load ordinary implementation libraries.
+    minecraftLibrary 'org.jetbrains.kotlin:kotlin-scripting-jvm-host:1.9.24'
     jarJar('org.jetbrains.kotlin:kotlin-scripting-jvm-host:[1.9.24,1.10)') {
         jarJar.pin(it, '1.9.24')
     }
@@ -79,6 +81,11 @@ tasks.named('assemble') { dependsOn 'jarJar' }
 tasks.register('verifyBundledKotlin') {
     dependsOn 'jarJar'
     doLast {
+        ['kotlin-stdlib-', 'kotlin-scripting-jvm-host-', 'kotlin-compiler-embeddable-'].each { name ->
+            if (!configurations.minecraftLibrary.files.any { it.name.startsWith(name) }) {
+                throw new GradleException("Missing ${name} in Forge development libraries")
+            }
+        }
         def archive = tasks.named('jarJar').get().archiveFile.get().asFile
         def zip = new java.util.zip.ZipFile(archive)
         try {

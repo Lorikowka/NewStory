@@ -31,6 +31,8 @@ public final class NarrativeOverlay {
     private static Line current;
     private static int age;
     private static ResourceLocation portrait;
+    private static final OwnedResourceCache<String, ResourceLocation> portraits = new OwnedResourceCache<>(32,
+            location -> Minecraft.getInstance().getTextureManager().release(location));
     public static void enqueue(String speaker, String head, int color, String text, DialogueMode mode, PortraitMode portraitMode) {
         String presented = switch (mode) {
             case SAY -> text;
@@ -41,8 +43,8 @@ public final class NarrativeOverlay {
     }
     public static void clear() {
         queue.clear(); current = null; age = 0;
-        if (portrait != null) Minecraft.getInstance().getTextureManager().release(portrait);
         portrait = null;
+        portraits.clear();
     }
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { clear(); }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
@@ -50,7 +52,6 @@ public final class NarrativeOverlay {
         if (event.phase != TickEvent.Phase.END || mc.isPaused() || mc.level == null) return;
         if (current != null && ++age >= Math.min(2400, 80 + current.text.codePointCount(0, current.text.length()) * 2)) {
             current = null;
-            if (portrait != null) mc.getTextureManager().release(portrait);
             portrait = null;
         }
         if (current == null && !queue.isEmpty()) {
@@ -66,6 +67,12 @@ public final class NarrativeOverlay {
             byte[] bytes;
             try (InputStream input = Files.newInputStream(file)) { bytes = input.readNBytes(262145); }
             if (bytes.length > 262144) return null;
+            String hash;
+            try {
+                hash = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+            } catch (java.security.NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
+            ResourceLocation cached = portraits.get(hash);
+            if (cached != null) return cached;
             try (var input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
                 var readers = ImageIO.getImageReaders(input);
                 if (!readers.hasNext()) return null;
@@ -75,8 +82,16 @@ public final class NarrativeOverlay {
                     if (!reader.getFormatName().equalsIgnoreCase("png") || reader.getWidth(0) > 256 || reader.getHeight(0) > 256) return null;
                 } finally { reader.dispose(); }
             }
-            NativeImage image = NativeImage.read(bytes);
-            return Minecraft.getInstance().getTextureManager().register("storyengine_head", new DynamicTexture(image));
+            DynamicTexture texture = new DynamicTexture(NativeImage.read(bytes));
+            ResourceLocation location;
+            try {
+                location = Minecraft.getInstance().getTextureManager().register("storyengine_head", texture);
+            } catch (RuntimeException ex) {
+                texture.close();
+                throw ex;
+            }
+            portraits.put(hash, location);
+            return location;
         } catch (IOException | RuntimeException ex) {
             com.mojang.logging.LogUtils.getLogger().warn("Cannot load narrative head {}: {}", name, ex.toString());
             return null;

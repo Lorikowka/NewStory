@@ -22,3 +22,5 @@
 - /story validate local:id теперь проверяет текущий файл в фоне без активации и показывает источник; добавлены проверки ошибок и недопустимых путей.
 
 - Добавлены явные PortraitMode CUSTOM_TEXTURE/NONE/FALLBACK, отсутствие отступа при NONE и narrative-протокол v4; прежний конструктор StoryNPC сохранён.
+
+- Исправлены namespaced ID команд start/validate и загрузка Kotlin-библиотек в Forge development runtime; добавлен LRU-кэш PNG-портретов и проверки освобождения ресурсов.
