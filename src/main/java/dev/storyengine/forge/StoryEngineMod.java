@@ -31,8 +31,9 @@ public final class StoryEngineMod {
     private StoryRuntime runtime;
     private StoryDefinition temple;
     private Map<String, StoryDefinition> localScripts = Map.of();
-    private CompletableFuture<LocalScriptLibrary.Result> pendingReload;
-    private net.minecraft.commands.CommandSourceStack reloadSource;
+    private CompletableFuture<LocalScriptLibrary.Result> pendingCompilation;
+    private net.minecraft.commands.CommandSourceStack compilationSource;
+    private String validationId;
     private final StoryDefinition chatDemo = ChatDemoStory.create();
     private long tick;
 
@@ -43,8 +44,9 @@ public final class StoryEngineMod {
         MinecraftServer server = event.getServer();
         tick = 0;
         players.clear();
-        pendingReload = null;
-        reloadSource = null;
+        pendingCompilation = null;
+        compilationSource = null;
+        validationId = null;
         runtime = new StoryRuntime(new StoryPlatform() {
             @Override public boolean apply(StoryInstanceId id, String key, String type, String value) {
                 ServerPlayer player = playerFor(server, id);
@@ -80,14 +82,15 @@ public final class StoryEngineMod {
         event.getDispatcher().register(Commands.literal("story").requires(source -> source.hasPermission(2))
             .then(Commands.literal("reload").executes(ctx -> {
                 if (runtime == null) return 0;
-                if (pendingReload != null) {
-                    ctx.getSource().sendFailure(Component.literal("Story reload is already running"));
+                if (pendingCompilation != null) {
+                    ctx.getSource().sendFailure(Component.literal("Script compilation is already running"));
                     return 0;
                 }
                 var previous = localScripts;
                 var directory = StoryFiles.root().resolve("scripts");
-                reloadSource = ctx.getSource();
-                pendingReload = LocalScriptLibrary.reloadAsync(directory, previous);
+                compilationSource = ctx.getSource();
+                validationId = null;
+                pendingCompilation = LocalScriptLibrary.reloadAsync(directory, previous);
                 ctx.getSource().sendSuccess(() -> Component.literal("Reloading trusted local Kotlin scripts..."), false);
                 return 1;
             }))
@@ -101,6 +104,18 @@ public final class StoryEngineMod {
                 ctx.getSource().sendSuccess(() -> Component.literal(temple == null ? "Not loaded" : "VALID demo:temple " + temple.contentHash()), false); return temple == null ? 0 : 1;
             }).then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
                 String id = StringArgumentType.getString(ctx, "id");
+                if (id.startsWith("local:")) {
+                    if (runtime == null) return 0;
+                    if (pendingCompilation != null) {
+                        ctx.getSource().sendFailure(Component.literal("Script compilation is already running"));
+                        return 0;
+                    }
+                    compilationSource = ctx.getSource();
+                    validationId = id;
+                    pendingCompilation = LocalScriptLibrary.validateAsync(StoryFiles.root().resolve("scripts"), id);
+                    ctx.getSource().sendSuccess(() -> Component.literal("Validating current file for " + id + "..."), false);
+                    return 1;
+                }
                 StoryDefinition story = definition(id);
                 if (story == null) { ctx.getSource().sendFailure(Component.literal("Unknown story: " + id)); return 0; }
                 ctx.getSource().sendSuccess(() -> Component.literal("VALID " + id + " " + story.contentHash()), false);
@@ -184,23 +199,33 @@ public final class StoryEngineMod {
     }
     @SubscribeEvent public void tick(TickEvent.ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.END && runtime != null) {
-            if (pendingReload != null && pendingReload.isDone()) {
+            if (pendingCompilation != null && pendingCompilation.isDone()) {
                 try {
-                    var result = pendingReload.join();
-                    localScripts = result.stories();
-                    if (result.errors().isEmpty()) {
+                    var result = pendingCompilation.join();
+                    if (validationId != null) {
+                        if (result.errors().isEmpty()) {
+                            var checked = result.stories().get(validationId);
+                            String message = "VALID file scripts/" + validationId.substring(6) + ".se.kts " + checked.contentHash()
+                                    + " (not activated; use /story reload)";
+                            compilationSource.sendSuccess(() -> Component.literal(message), false);
+                        } else {
+                            result.errors().forEach(message -> compilationSource.sendFailure(Component.literal(message)));
+                        }
+                    } else if (result.errors().isEmpty()) {
+                        localScripts = result.stories();
                         int count = localScripts.size();
-                        reloadSource.sendSuccess(() -> Component.literal("Reloaded " + count + " Kotlin stories. Active stories keep their previous graph."), false);
+                        compilationSource.sendSuccess(() -> Component.literal("Reloaded " + count + " Kotlin stories. Active stories keep their previous graph."), false);
                     } else {
-                        reloadSource.sendFailure(Component.literal("Reload rejected; previous catalog retained. See server log."));
+                        compilationSource.sendFailure(Component.literal("Reload rejected; previous catalog retained. See server log."));
                         result.errors().forEach(message -> com.mojang.logging.LogUtils.getLogger().warn("Story reload: {}", message));
                     }
                 } catch (RuntimeException ex) {
-                    com.mojang.logging.LogUtils.getLogger().error("Story reload failed; previous catalog retained", ex);
-                    reloadSource.sendFailure(Component.literal("Reload failed; previous catalog retained. See server log."));
+                    com.mojang.logging.LogUtils.getLogger().error("Story compilation failed; previous catalog retained", ex);
+                    compilationSource.sendFailure(Component.literal("Script compilation failed; previous catalog retained. See server log."));
                 } finally {
-                    pendingReload = null;
-                    reloadSource = null;
+                    pendingCompilation = null;
+                    compilationSource = null;
+                    validationId = null;
                 }
             }
             runtime.tick(tick++, 100, 1000, 20);
@@ -208,7 +233,7 @@ public final class StoryEngineMod {
     }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) {
         players.clear(); runtime = null; temple = null; localScripts = Map.of();
-        if (pendingReload != null) pendingReload.cancel(true);
-        pendingReload = null; reloadSource = null;
+        if (pendingCompilation != null) pendingCompilation.cancel(true);
+        pendingCompilation = null; compilationSource = null; validationId = null;
     }
 }

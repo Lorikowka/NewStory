@@ -16,6 +16,31 @@ import static org.junit.jupiter.api.Assertions.*;
 class LocalScriptLibraryTest {
     @TempDir Path directory;
 
+    @Test void validationReadsEditedFileWithoutReplacingWorkingGraph() throws Exception {
+        var previous = Map.of("local:chapter_01", ChatDemoStory.create());
+        var original = previous.get("local:chapter_01");
+        Path file = directory.resolve("chapter_01.se.kts");
+        Files.writeString(file, "awaitEvent(\"engine:block_interact\")");
+        var valid = LocalScriptLibrary.validateAsync(directory, "local:chapter_01")
+                .get(90, java.util.concurrent.TimeUnit.SECONDS);
+        assertTrue(valid.errors().isEmpty(), valid.errors().toString());
+        assertInstanceOf(StoryDefinition.Await.class, valid.stories().get("local:chapter_01").nodes().get("step_0"));
+        Files.writeString(file, "not valid Kotlin !!!");
+        var invalid = LocalScriptLibrary.validate(directory, "local:chapter_01");
+        assertTrue(invalid.stories().isEmpty());
+        assertFalse(invalid.errors().isEmpty());
+        assertSame(original, previous.get("local:chapter_01"));
+    }
+
+    @Test void validationRejectsPathTraversalAndMissingFiles() {
+        var traversal = LocalScriptLibrary.validate(directory, "local:../escape");
+        assertTrue(traversal.stories().isEmpty());
+        assertEquals(java.util.List.of("Invalid local story ID"), traversal.errors());
+        var missing = LocalScriptLibrary.validate(directory, "local:missing");
+        assertTrue(missing.stories().isEmpty());
+        assertEquals(1, missing.errors().size());
+    }
+
     @Test void failedReloadPreservesPreviousCatalog() throws Exception {
         var graph = ChatDemoStory.create();
         var previous = Map.of("local:working", graph);

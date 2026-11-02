@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /** Loads a bounded set of trusted, local Kotlin scripts when the server starts. */
 final class LocalScriptLibrary {
@@ -21,12 +22,37 @@ final class LocalScriptLibrary {
 
     static CompletableFuture<Result> reloadAsync(Path directory, Map<String, StoryDefinition> previous) {
         Map<String, StoryDefinition> snapshot = Map.copyOf(previous);
-        return CompletableFuture.supplyAsync(() -> reload(directory, snapshot), task -> {
+        return async(() -> reload(directory, snapshot));
+    }
+
+    static CompletableFuture<Result> validateAsync(Path directory, String id) {
+        return async(() -> validate(directory, id));
+    }
+
+    private static CompletableFuture<Result> async(Supplier<Result> operation) {
+        return CompletableFuture.supplyAsync(operation, task -> {
             Thread worker = new Thread(task, "storyengine-script-reload");
             worker.setDaemon(true);
             worker.setContextClassLoader(LocalScriptLibrary.class.getClassLoader());
             worker.start();
         });
+    }
+
+    /** Checks the current file without changing a loaded catalog or executing gameplay effects. */
+    static Result validate(Path directory, String id) {
+        if (id == null || !id.matches("local:[a-z0-9_-]{1,64}")) {
+            return new Result(Map.of(), List.of("Invalid local story ID"));
+        }
+        Path file = directory.resolve(id.substring("local:".length()) + ".se.kts");
+        if (Files.isSymbolicLink(file)) {
+            return new Result(Map.of(), List.of(id + ": Symlink scripts are not allowed"));
+        }
+        try {
+            return new Result(Map.of(id, new KotlinStoryCompiler().compile(file, id)), List.of());
+        } catch (Exception | LinkageError ex) {
+            String message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
+            return new Result(Map.of(), List.of(id + ": " + message.substring(0, Math.min(message.length(), 1024))));
+        }
     }
 
     /** A reload commits only a completely valid catalog. Active runtime instances keep their graphs. */
@@ -54,12 +80,9 @@ final class LocalScriptLibrary {
                 errors.add("Invalid script filename or symlink: " + name); continue;
             }
             String id = "local:" + base;
-            try {
-                stories.put(id, new KotlinStoryCompiler().compile(file, id));
-            } catch (Exception | LinkageError ex) {
-                String message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
-                errors.add(id + ": " + message.substring(0, Math.min(message.length(), 1024)));
-            }
+            Result checked = validate(directory, id);
+            stories.putAll(checked.stories());
+            errors.addAll(checked.errors());
         }
         return new Result(stories, errors);
     }

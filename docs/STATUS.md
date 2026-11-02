@@ -85,3 +85,5 @@ runServer прошёл bootstrap Forge и остановился на eula=false
 ## Итог автоматических проверок 2 ноября 2026
 
 Полная Gradle/Forge build на JDK 17 завершилась успешно: 32 теста, 0 failures/errors. Проверены фоновая reload с прежним графом активного экземпляра, отказ каталога при синтаксической ошибке, удалённые файлы, awaitEvent с адресацией и все три режима реплик. Проверка verifyBundledKotlin прошла. Скрипт test-packaged-kotlin.ps1 с samples/kotlin/dialogue_modes.se.kts запустил компиляцию из выпускного JAR и его вложенных зависимостей: VALID smoke:dialogue_modes, nodes=6. Ручные игровые проверки новых функций остаются в GAMEPLAY_TEST.md.
+
+Проверка текущего Kotlin-файла через /story validate local:id переведена на фоновую компиляцию без активации. Полная локальная сборка прошла: 34 теста, 0 failures/errors. Первый push d9e06d0 прошёл обе GitHub Actions jobs: headless и forge. Для новых изменений удалённый CI запускается отдельно.
