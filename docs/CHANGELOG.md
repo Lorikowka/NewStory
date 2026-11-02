@@ -24,3 +24,5 @@
 - Добавлены явные PortraitMode CUSTOM_TEXTURE/NONE/FALLBACK, отсутствие отступа при NONE и narrative-протокол v4; прежний конструктор StoryNPC сохранён.
 
 - Исправлены namespaced ID команд start/validate и загрузка Kotlin-библиотек в Forge development runtime; добавлен LRU-кэш PNG-портретов и проверки освобождения ресурсов.
+
+- Kotlin compiler вынесен из JPMS Forge в отдельный classloader; библиотеки пакуются в META-INF/storyengine-libraries, проверка выпускного JAR использует тот же загрузчик без внешнего classpath.

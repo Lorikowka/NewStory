@@ -43,4 +43,4 @@ CLI запускается из `modules/tools-validator`, поэтому пут
 
 
 
-Проверка Kotlin из выпускного JAR (PowerShell, JDK 17): powershell -ExecutionPolicy Bypass -File scripts/test-packaged-kotlin.ps1. Сначала выполните полную сборку. Проверка извлекает вложенные зависимости в build/packaged-smoke и компилирует пример без classpath разработки.
+Проверка Kotlin из выпускного JAR (PowerShell, JDK 17): powershell -ExecutionPolicy Bypass -File scripts/test-packaged-kotlin.ps1. Сначала выполните полную сборку. Проверка запускает изолированный host из выпускного JAR без внешнего Kotlin classpath. Библиотеки извлекаются во временный каталог процесса.

@@ -102,3 +102,7 @@ runServer прошёл bootstrap Forge и остановился на eula=false
 Повторный захват окна Minecraft завершился FrameArrived/window capture timed out. Пользователь проверяет игру вручную; исправления требуют нового запуска клиента. Эти изменения ещё не означают успешную визуальную приёмку или реализацию AUTO_RENDER.
 
 Исправления команд, minecraftLibrary и кэша прошли полную локальную Gradle build: 39 тестов, 0 failures/errors. Проверка наличия Kotlin stdlib, scripting host и compiler в minecraftLibrary теперь входит в check. Повторный игровой запуск начат; успешная загрузка Kotlin в мире ещё не подтверждена.
+
+Повторный runClient с compiler в minecraftLibrary остановился до загрузки Forge: JPMS отверг пакет org.jetbrains.kotlin.fir.analysis.native.checkers. Kotlin compiler вынесен из модульного слоя в отдельный URLClassLoader; вложенные JAR теперь лежат в META-INF/storyengine-libraries, а не jarJar. Java API и граф остаются общими. Проверка из выпускного JAR теперь запускает именно этот host без внешнего Kotlin classpath. Исправление проходит проверку; успешный запуск мира пока не подтверждён.
+
+Изолированный Kotlin host прошёл полную Gradle build и тесты загрузчика. scripts/test-packaged-kotlin.ps1 запустил dev.storyengine.forge.IsolatedScriptCompiler с classpath, содержащим только выпускной mod JAR: VALID smoke:portrait_modes, nodes=6, exit code 0. Зависимости и Java API для компилятора извлекаются из вложенных библиотек; граф и DSL-типы разделяются с модом через родительский loader. Новый runClient запущен для повторной проверки в мире.

@@ -39,3 +39,5 @@ StoryNPC принимает необязательный пятый аргуме
 - `FALLBACK`: всегда показать стандартную голову, не читать локальный PNG.
 
 Пример: `class Voice : StoryNPC("story:voice", "Голос", 0xBBBBBB, "voice", PortraitMode.NONE)`. Полный пример — samples/kotlin/portrait_modes.se.kts. Старый конструктор с четырьмя аргументами сохраняется. AUTO_RENDER пока не реализован. Режим передаётся отдельным enum в сетевом пакете, текущая версия протокола — 4.
+
+Kotlin host и compiler загружаются отдельным classloader из вложенных библиотек META-INF/storyengine-libraries. Это отделяет зависимости от модульной системы Forge и не ограничивает права доверенного пользовательского Kotlin-кода. Java API и граф общие с модом.

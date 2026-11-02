@@ -5,18 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $archive = Join-Path $projectRoot 'build/libs/storyengine-0.1.0-SNAPSHOT.jar'
-$destination = Join-Path $projectRoot ('build/packaged-smoke/' + [guid]::NewGuid())
-New-Item -ItemType Directory -Path $destination -Force | Out-Null
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [System.IO.Compression.ZipFile]::OpenRead($archive)
-try {
-    foreach ($entry in $zip.Entries) {
-        if ($entry.FullName.StartsWith('META-INF/jarjar/') -and $entry.FullName.EndsWith('.jar')) {
-            $target = Join-Path $destination ([System.IO.Path]::GetFileName($entry.FullName))
-            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target)
-        }
-    }
-} finally { $zip.Dispose() }
 $java = Join-Path $env:JAVA_HOME 'bin/java.exe'
-& $java -cp "$archive;$destination/*" dev.storyengine.script.StoryScriptCliKt (Join-Path $projectRoot $Script) $StoryId
+# Deliberately no external Kotlin classpath: the production loader must find its own nested libraries.
+& $java -cp $archive dev.storyengine.forge.IsolatedScriptCompiler (Join-Path $projectRoot $Script) $StoryId
 if ($LASTEXITCODE -ne 0) { throw "Packaged Kotlin smoke failed: $LASTEXITCODE" }

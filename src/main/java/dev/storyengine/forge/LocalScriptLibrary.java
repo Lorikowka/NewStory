@@ -1,7 +1,6 @@
 package dev.storyengine.forge;
 
 import dev.storyengine.core.StoryDefinition;
-import dev.storyengine.script.KotlinStoryCompiler;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,7 +47,7 @@ final class LocalScriptLibrary {
             return new Result(Map.of(), List.of(id + ": Symlink scripts are not allowed"));
         }
         try {
-            return new Result(Map.of(id, new KotlinStoryCompiler().compile(file, id)), List.of());
+            return new Result(Map.of(id, IsolatedScriptCompiler.compile(file, id)), List.of());
         } catch (Exception | LinkageError ex) {
             String message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
             return new Result(Map.of(), List.of(id + ": " + message.substring(0, Math.min(message.length(), 1024))));

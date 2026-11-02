@@ -9,6 +9,7 @@ group = mod_group_id
 base { archivesName = mod_id }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 jarJar.enable()
+configurations { scriptLibraries }
 
 allprojects {
     repositories { mavenCentral() }
@@ -53,12 +54,23 @@ dependencies {
     implementation project(':engine-compiler')
     implementation project(':engine-script-api')
     implementation project(':engine-script-compiler')
-    // Forge's development module layer does not load ordinary implementation libraries.
-    minecraftLibrary 'org.jetbrains.kotlin:kotlin-scripting-jvm-host:1.9.24'
-    jarJar('org.jetbrains.kotlin:kotlin-scripting-jvm-host:[1.9.24,1.10)') {
-        jarJar.pin(it, '1.9.24')
+    // Compiler JARs contain packages unsuitable for Forge's JPMS module layer.
+    scriptLibraries 'org.jetbrains.kotlin:kotlin-scripting-jvm-host:1.9.24'
+}
+
+def scriptResources = layout.buildDirectory.dir('generated/scriptLibraries')
+def scriptModules = [':engine-core', ':engine-script-api', ':engine-script-compiler'].collect { project(it).tasks.named('jar') }
+tasks.register('bundleScriptLibraries', Sync) {
+    from configurations.scriptLibraries
+    scriptModules.each { from it }
+    into scriptResources.map { it.dir('META-INF/storyengine-libraries') }
+    doLast {
+        new File(destinationDir, 'index.txt').setText(
+                (configurations.scriptLibraries.files.collect { it.name } + scriptModules.collect { it.get().archiveFile.get().asFile.name }).sort().join('\n') + '\n', 'UTF-8')
     }
 }
+sourceSets.main.resources.srcDir scriptResources
+tasks.named('processResources') { dependsOn 'bundleScriptLibraries' }
 
 tasks.named('jar', Jar).configure {
     archiveClassifier = 'slim'
@@ -81,21 +93,21 @@ tasks.named('assemble') { dependsOn 'jarJar' }
 tasks.register('verifyBundledKotlin') {
     dependsOn 'jarJar'
     doLast {
-        ['kotlin-stdlib-', 'kotlin-scripting-jvm-host-', 'kotlin-compiler-embeddable-'].each { name ->
-            if (!configurations.minecraftLibrary.files.any { it.name.startsWith(name) }) {
-                throw new GradleException("Missing ${name} in Forge development libraries")
-            }
-        }
         def archive = tasks.named('jarJar').get().archiveFile.get().asFile
         def zip = new java.util.zip.ZipFile(archive)
         try {
-            ['META-INF/mods.toml', 'META-INF/jarjar/metadata.json',
+            ['META-INF/mods.toml', 'META-INF/storyengine-libraries/index.txt',
              'dev/storyengine/script/KotlinStoryCompiler.class', 'stories/chapter_01.se.kts'].each { path ->
                 if (zip.getEntry(path) == null) throw new GradleException("Missing ${path} in ${archive.name}")
             }
-            def metadata = zip.getInputStream(zip.getEntry('META-INF/jarjar/metadata.json')).getText('UTF-8')
-            if (!metadata.contains('kotlin-scripting-jvm-host')) {
-                throw new GradleException("Kotlin scripting host is missing from ${archive.name}")
+            def libraries = zip.getInputStream(zip.getEntry('META-INF/storyengine-libraries/index.txt')).getText('UTF-8').readLines()
+            ['kotlin-stdlib-', 'kotlin-scripting-jvm-host-', 'kotlin-compiler-embeddable-'].each { name ->
+                if (!libraries.any { it.startsWith(name) }) throw new GradleException("Missing ${name} in isolated libraries")
+            }
+            libraries.each { name ->
+                if (zip.getEntry("META-INF/storyengine-libraries/${name}") == null) {
+                    throw new GradleException("Missing isolated library ${name}")
+                }
             }
         } finally { zip.close() }
     }
