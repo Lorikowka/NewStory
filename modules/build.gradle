@@ -1,0 +1,12 @@
+subprojects {
+    apply plugin: 'java-library'
+    group = 'dev.storyengine'
+    version = '0.1.0-SNAPSHOT'
+    repositories { mavenCentral() }
+    java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.fork = true
+    }
+    tasks.withType(Test).configureEach { useJUnitPlatform() }
+}

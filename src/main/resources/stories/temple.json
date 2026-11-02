@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "demo:temple",
+  "entry": "intro",
+  "nodes": {
+    "intro": {"action": {"type": "engine:title", "value": "Abandoned Temple"}, "next": "arrival"},
+    "arrival": {"action": {"type": "engine:message", "value": "The temple gate is sealed. Approach the entrance."}, "next": "wait"},
+    "wait": {"await": {"type": "demo:enter_temple"}, "next": "pause"},
+    "pause": {"delay": 20, "next": "discovery"},
+    "discovery": {"action": {"type": "engine:message", "value": "The ancient seal awakens. Your journey begins."}, "next": "end"},
+    "end": {"finish": true}
+  }
+}

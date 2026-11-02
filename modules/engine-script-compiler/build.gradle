@@ -1,0 +1,19 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.24'
+    id 'application'
+}
+
+dependencies {
+    api project(':engine-script-api')
+    implementation 'org.jetbrains.kotlin:kotlin-scripting-common:1.9.24'
+    implementation 'org.jetbrains.kotlin:kotlin-scripting-jvm:1.9.24'
+    implementation 'org.jetbrains.kotlin:kotlin-scripting-jvm-host:1.9.24'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions.jvmTarget = '17'
+}
+
+application { mainClass = 'dev.storyengine.script.StoryScriptCliKt' }

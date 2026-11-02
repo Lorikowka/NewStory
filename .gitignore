@@ -1,0 +1,15 @@
+.gradle/
+.gradle-local/
+.tools/
+**/build/
+**/run/
+.idea/
+*.iml
+.env
+
+**/.gradle/
+run-data/
+src/generated/
+
+/build-local.log
+/javac.*.args

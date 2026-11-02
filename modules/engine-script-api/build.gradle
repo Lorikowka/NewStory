@@ -1,0 +1,17 @@
+dependencies {
+    api project(':engine-core')
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
+}
+
+tasks.register('checkArchitecture') {
+    inputs.files(fileTree('src/main/java'))
+    doLast {
+        fileTree('src/main/java').matching { include '**/*.java' }.each { source ->
+            if (source.text =~ /\bnet\.(minecraft|minecraftforge)\b/) {
+                throw new GradleException("Forbidden platform dependency: ${source}")
+            }
+        }
+    }
+}
+tasks.named('check') { dependsOn 'checkArchitecture' }

@@ -1,0 +1,9 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven { url = 'https://maven.minecraftforge.net/' }
+    }
+}
+rootProject.name = 'story-engine'
+include 'engine-core', 'engine-compiler', 'engine-script-api', 'engine-script-compiler', 'tools-validator'
+rootProject.children.each { it.projectDir = file("modules/${it.name}") }

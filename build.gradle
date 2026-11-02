@@ -1,0 +1,105 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+}
+
+version = mod_version
+group = mod_group_id
+base { archivesName = mod_id }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+jarJar.enable()
+
+allprojects {
+    repositories { mavenCentral() }
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.fork = true
+    }
+}
+subprojects {
+    apply plugin: 'java-library'
+    group = rootProject.group
+    version = rootProject.version
+    java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+    tasks.withType(Test).configureEach { useJUnitPlatform() }
+}
+
+minecraft {
+    mappings channel: mapping_channel, version: mapping_version
+    copyIdeResources = true
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'info'
+            mods {
+                storyengine {
+                    source sourceSets.main
+                    source project(':engine-core').sourceSets.main
+                    source project(':engine-compiler').sourceSets.main
+                    source project(':engine-script-api').sourceSets.main
+                    source project(':engine-script-compiler').sourceSets.main
+                }
+            }
+        }
+        client {}
+        server { args '--nogui' }
+    }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    implementation project(':engine-core')
+    implementation project(':engine-compiler')
+    implementation project(':engine-script-api')
+    implementation project(':engine-script-compiler')
+    jarJar('org.jetbrains.kotlin:kotlin-scripting-jvm-host:[1.9.24,1.10)') {
+        jarJar.pin(it, '1.9.24')
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    archiveClassifier = 'slim'
+    from project(':engine-core').sourceSets.main.output
+    from project(':engine-compiler').sourceSets.main.output
+    from project(':engine-script-api').sourceSets.main.output
+    from project(':engine-script-compiler').sourceSets.main.output
+    manifest { attributes 'Implementation-Version': project.version }
+    finalizedBy 'reobfJar'
+}
+tasks.named('jarJar', Jar).configure {
+    archiveClassifier = ''
+    from project(':engine-core').sourceSets.main.output
+    from project(':engine-compiler').sourceSets.main.output
+    from project(':engine-script-api').sourceSets.main.output
+    from project(':engine-script-compiler').sourceSets.main.output
+    finalizedBy 'reobfJarJar'
+}
+tasks.named('assemble') { dependsOn 'jarJar' }
+tasks.register('verifyBundledKotlin') {
+    dependsOn 'jarJar'
+    doLast {
+        def archive = tasks.named('jarJar').get().archiveFile.get().asFile
+        def zip = new java.util.zip.ZipFile(archive)
+        try {
+            ['META-INF/mods.toml', 'META-INF/jarjar/metadata.json',
+             'dev/storyengine/script/KotlinStoryCompiler.class', 'stories/chapter_01.se.kts'].each { path ->
+                if (zip.getEntry(path) == null) throw new GradleException("Missing ${path} in ${archive.name}")
+            }
+            def metadata = zip.getInputStream(zip.getEntry('META-INF/jarjar/metadata.json')).getText('UTF-8')
+            if (!metadata.contains('kotlin-scripting-jvm-host')) {
+                throw new GradleException("Kotlin scripting host is missing from ${archive.name}")
+            }
+        } finally { zip.close() }
+    }
+}
+
+tasks.named('check') {
+    dependsOn ':engine-core:check', ':engine-compiler:check', ':engine-script-api:check', ':engine-script-compiler:check', ':tools-validator:check', 'verifyBundledKotlin'
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
+}
+tasks.withType(Test).configureEach { useJUnitPlatform() }
