@@ -109,3 +109,11 @@ runServer прошёл bootstrap Forge и остановился на eula=false
 
 ## Подтверждённый запуск Kotlin в мире — 2 ноября 2026
 Пользователь подтвердил запуск local:portrait_modes и показ трёх реплик. Лог текущей сессии подтверждает Loaded 4 local Kotlin stories, наличие всех четырёх историй в /story list и Story started: local:portrait_modes. Ошибок Story script/ERROR в проверенной сессии не найдено. Это подтверждает загрузку изолированного Kotlin host в Forge development runtime и разбор namespaced ID. Визуальная проверка сценария подтверждена пользователем; завершение COMPLETED через inspect, реальные пользовательские PNG и отдельный production-server запуск этим результатом не подтверждаются. Следующая проверка — reload и engine:block_interact.
+
+Пользователь подтвердил успешную /story reload и финальную реплику interaction после правого клика по блоку. Лог подтверждает Reloaded 4 Kotlin stories и Story started: local:interaction. Реальный Forge event bridge проверен в одиночном мире. Начата контролируемая проверка отказа reload: добавлен отдельный временный zz_test_reload_rejection.se.kts, пользовательские сценарии не изменены.
+
+## Проверка reload и игрового события — 2 ноября 2026
+
+Пользователь подтвердил /story reload, запуск local:interaction и финальную реплику после правого клика по блоку. В контролируемом тесте отдельный временный zz_test_reload_rejection.se.kts содержал синтаксическую ошибку: /story validate показал имя файла и строку 1, /story reload сообщил Reload rejected; previous catalog retained. После отказа прежняя local:interaction вновь успешно прошла до финальной реплики. Ответы команд подтверждены логом, показ реплик — пользователем. Временный файл удалён после проверки, пользовательские сценарии не изменялись.
+
+Итого в одиночной игре подтверждены загрузка Kotlin, namespaced start/list, показ тестовых реплик, фоновая reload, engine:block_interact, диагностика текущего файла и сохранение рабочего каталога при ошибке. Отдельно остаются: inspect состояния COMPLETED, смена версии уже активного графа в игре (проверена автоматически), пользовательский PNG, dedicated server и установка production JAR в обычный лаунчер.
